@@ -11,8 +11,14 @@ class Settings(BaseSettings):
     max_retries: int = 2
     circuit_failure_threshold: int = 5
     circuit_recovery_seconds: float = 30.0
+    routing_policy: str = "health_aware"
     log_level: str = "INFO"
 
-    model_config = SettingsConfigDict(env_prefix="NEXORA_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="NEXORA_",
+        env_file=".env",
+        extra="ignore",
+    )
+
 
 settings = Settings()

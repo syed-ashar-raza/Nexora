@@ -19,7 +19,7 @@ class InferenceService:
             )
             for p in self.registry.all()
         }
-        self.router = Router(self.registry.all())
+        self.router = Router(self.registry.all(), settings.routing_policy)
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         healthy = {
