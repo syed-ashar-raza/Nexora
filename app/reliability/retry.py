@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 
-from app.providers.base import ProviderTimeout
+from app.providers.base import ProviderError, ProviderTimeout
 
 
 async def with_retry[T](
@@ -20,20 +20,18 @@ async def with_retry[T](
                 operation(),
                 timeout=timeout_seconds,
             )
-        except TimeoutError as exc:
+        except TimeoutError:
             last_error = ProviderTimeout(
                 f"Provider request timed out after {timeout_seconds:.2f}s"
             )
-            if attempt < retries:
-                continue
-            raise last_error from exc
-        except Exception as exc:
+        except ProviderError as exc:
             last_error = exc
-            if attempt < retries:
-                continue
+        except Exception:
             raise
 
-    if last_error is not None:
+        if attempt < retries:
+            continue
+
         raise last_error
 
     raise RuntimeError("Retry operation failed unexpectedly")
