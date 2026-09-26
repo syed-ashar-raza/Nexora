@@ -1,0 +1,9 @@
+services:
+  nexora:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      NEXORA_ENVIRONMENT: production
+      NEXORA_LOG_LEVEL: INFO
+    restart: unless-stopped
