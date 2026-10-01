@@ -253,6 +253,24 @@ Stop the container:
 
     docker stop nexora
 
+## ☸️ Kubernetes
+
+Nexora includes a Kubernetes deployment manifest under `k8s/`.
+
+The deployment was validated locally with Minikube and Docker using:
+
+- Kubernetes deployment
+- Nexora container image
+- Liveness probe on `/health`
+- Readiness probe on `/ready`
+- Kubernetes Service exposure
+- Running pod verification
+- API health and inference verification
+
+Local validation confirmed the application running successfully inside Kubernetes with the configured health and readiness probes.
+
+This demonstrates container orchestration and operational deployment patterns in addition to the core inference gateway implementation.
+
 ## CI
 
 GitHub Actions validates the project with automated quality checks.
