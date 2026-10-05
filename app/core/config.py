@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     circuit_failure_threshold: int = 5
     circuit_recovery_seconds: float = 30.0
     routing_policy: str = "health_aware"
+    provider_concurrency_limit: int = 10
     log_level: str = "INFO"
 
     model_config = SettingsConfigDict(

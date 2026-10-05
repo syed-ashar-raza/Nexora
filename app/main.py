@@ -11,6 +11,7 @@ from app.providers.base import (
     ProviderTimeout,
     ProviderUnavailable,
 )
+from app.reliability.bulkhead import BulkheadFull
 from app.security.auth import authenticate
 from app.services.inference import InferenceService
 
@@ -32,6 +33,24 @@ async def request_id_middleware(request: Request, call_next):
     response.headers["X-Request-ID"] = request_id
     return response
 
+
+@app.exception_handler(BulkheadFull)
+async def bulkhead_full_handler(
+    request: Request,
+    exc: BulkheadFull,
+):
+    request_id = getattr(request.state, "request_id", "")
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": {
+                "type": "bulkhead_full",
+                "message": str(exc),
+            },
+            "request_id": request_id,
+        },
+        headers={"X-Request-ID": request_id},
+    )
 
 @app.exception_handler(ProviderUnavailable)
 async def provider_unavailable_handler(
@@ -149,3 +168,4 @@ async def chat_stream(request: ChatRequest):
         events(),
         media_type="text/event-stream",
     )
+

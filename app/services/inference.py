@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.models.schemas import ChatRequest, ChatResponse
 from app.observability.metrics import LATENCY, REQUESTS, RETRIES, TOKENS
 from app.providers.registry import ProviderRegistry
+from app.reliability.bulkhead import Bulkhead, BulkheadFull
 from app.reliability.circuit_breaker import CircuitBreaker
 from app.reliability.retry import with_retry
 from app.routing.policy import Router
@@ -20,14 +21,26 @@ class InferenceService:
             for p in self.registry.all()
         }
         self.router = Router(self.registry.all(), settings.routing_policy)
+        self.bulkheads = {
+            p.name: Bulkhead(settings.provider_concurrency_limit) 
+            for p in self.registry.all()
+        }
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
-        healthy = {p.name for p in self.registry.all() if self.breakers[p.name].allow()}
+        healthy = {
+            p.name
+            for p in self.registry.all()
+            if self.breakers[p.name].allow()
+        }
         provider = self.router.choose(request.model, healthy)
         breaker = self.breakers[provider.name]
+        bulkhead = self.bulkheads[provider.name]
         started = time.perf_counter()
+        acquired = False
 
         try:
+            await bulkhead.acquire()
+            acquired = True
             response = await with_retry(
                 lambda: provider.chat(request),
                 settings.max_retries,
@@ -45,7 +58,15 @@ class InferenceService:
             TOKENS.labels(request.model, "prompt").inc(response.usage.prompt_tokens)
             TOKENS.labels(request.model, "completion").inc(response.usage.completion_tokens)
             return response
+        except BulkheadFull:
+            REQUESTS.labels(request.model, "bulkhead_full").inc()
+            raise
         except Exception:
             breaker.failure()
             REQUESTS.labels(request.model, "error").inc()
             raise
+        finally:
+            if acquired:
+                await bulkhead.release()
+
+
