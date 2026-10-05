@@ -2,7 +2,7 @@ import time
 
 from app.core.config import settings
 from app.models.schemas import ChatRequest, ChatResponse
-from app.observability.metrics import LATENCY, REQUESTS, TOKENS
+from app.observability.metrics import LATENCY, REQUESTS, RETRIES, TOKENS
 from app.providers.registry import ProviderRegistry
 from app.reliability.circuit_breaker import CircuitBreaker
 from app.reliability.retry import with_retry
@@ -35,6 +35,7 @@ class InferenceService:
                 settings.retry_backoff_seconds,
                 settings.retry_max_backoff_seconds,
                 settings.retry_jitter_seconds,
+                lambda _: RETRIES.labels(request.model).inc(),
             )
             breaker.success()
             elapsed = time.perf_counter() - started

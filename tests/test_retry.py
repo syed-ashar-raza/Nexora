@@ -101,3 +101,27 @@ async def test_retry_caps_backoff(monkeypatch):
         )
 
     assert delays == [1.0, 1.5, 1.5]
+
+@pytest.mark.asyncio
+async def test_retry_reports_retry_attempts():
+    attempts = 0
+    retry_events = []
+
+    async def operation():
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise ProviderError("temporary failure")
+        return "ok"
+
+    assert (
+        await with_retry(
+            operation,
+            retries=2,
+            on_retry=retry_events.append,
+        )
+        == "ok"
+    )
+
+    assert retry_events == [1, 2]
+

@@ -12,6 +12,7 @@ async def with_retry[T](
     backoff_seconds: float = 0.0,
     max_backoff_seconds: float = 0.0,
     jitter_seconds: float = 0.0,
+    on_retry: Callable[[int], None] | None = None,
 ) -> T:
     last_error: Exception | None = None
 
@@ -25,13 +26,18 @@ async def with_retry[T](
                 timeout=timeout_seconds,
             )
         except TimeoutError:
-            last_error = ProviderTimeout(f"Provider request timed out after {timeout_seconds:.2f}s")
+            last_error = ProviderTimeout(
+                f"Provider request timed out after {timeout_seconds:.2f}s"
+            )
         except ProviderError as exc:
             last_error = exc
         except Exception:
             raise
 
         if attempt < retries:
+            if on_retry is not None:
+                on_retry(attempt + 1)
+
             delay = min(
                 backoff_seconds * (2**attempt),
                 max_backoff_seconds,
