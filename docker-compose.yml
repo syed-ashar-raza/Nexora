@@ -7,3 +7,13 @@ services:
       NEXORA_ENVIRONMENT: production
       NEXORA_LOG_LEVEL: INFO
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.8.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - nexora
+    restart: unless-stopped
