@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     rate_window_seconds: int = 60
     request_timeout_seconds: float = 30.0
     max_retries: int = 2
+    retry_backoff_seconds: float = 0.1
+    retry_max_backoff_seconds: float = 2.0
+    retry_jitter_seconds: float = 0.05
     circuit_failure_threshold: int = 5
     circuit_recovery_seconds: float = 30.0
     routing_policy: str = "health_aware"

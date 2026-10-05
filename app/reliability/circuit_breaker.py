@@ -19,13 +19,24 @@ class CircuitBreaker:
         self.failures = 0
         self.state = CircuitState.CLOSED
         self.opened_at = 0.0
+        self._half_open_probe = False
 
     def allow(self) -> bool:
-        if self.state != CircuitState.OPEN:
+        if self.state == CircuitState.CLOSED:
             return True
 
-        if time.monotonic() - self.opened_at >= self.recovery_seconds:
+        if self.state == CircuitState.OPEN:
+            if time.monotonic() - self.opened_at < self.recovery_seconds:
+                return False
+
             self.state = CircuitState.HALF_OPEN
+            self._half_open_probe = False
+
+        if self.state == CircuitState.HALF_OPEN:
+            if self._half_open_probe:
+                return False
+
+            self._half_open_probe = True
             return True
 
         return False
@@ -33,9 +44,11 @@ class CircuitBreaker:
     def success(self) -> None:
         self.failures = 0
         self.state = CircuitState.CLOSED
+        self._half_open_probe = False
 
     def failure(self) -> None:
         self.failures += 1
+        self._half_open_probe = False
 
         if self.failures >= self.threshold:
             self.state = CircuitState.OPEN
