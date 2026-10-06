@@ -62,6 +62,7 @@ class InferenceService:
                     settings.retry_max_backoff_seconds,
                     settings.retry_jitter_seconds,
                     lambda _: RETRIES.labels(request.model).inc(),
+                    settings.retry_budget_seconds,
                 )
                 breaker.success()
                 elapsed = time.perf_counter() - started

@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from app.providers.base import ProviderError, ProviderTimeout
@@ -125,3 +127,47 @@ async def test_retry_reports_retry_attempts():
 
     assert retry_events == [1, 2]
 
+
+
+@pytest.mark.asyncio
+async def test_retry_respects_retry_budget(monkeypatch):
+    delays = []
+
+    async def fake_sleep(delay):
+        delays.append(delay)
+
+    monkeypatch.setattr("app.reliability.retry.asyncio.sleep", fake_sleep)
+
+    attempts = 0
+
+    async def operation():
+        nonlocal attempts
+        attempts += 1
+        raise ProviderError("persistent failure")
+
+    with pytest.raises(ProviderError):
+        await with_retry(
+            operation,
+            retries=3,
+            backoff_seconds=1.0,
+            max_backoff_seconds=2.0,
+            jitter_seconds=0.0,
+            retry_budget_seconds=0.5,
+        )
+
+    assert attempts == 1
+    assert delays == []
+
+
+@pytest.mark.asyncio
+async def test_retry_budget_bounds_attempt_timeout():
+    async def operation():
+        await asyncio.sleep(1.0)
+
+    with pytest.raises(ProviderTimeout):
+        await with_retry(
+            operation,
+            retries=1,
+            timeout_seconds=10.0,
+            retry_budget_seconds=0.05,
+        )

@@ -154,6 +154,7 @@ Example:
     NEXORA_RATE_WINDOW_SECONDS=60
     NEXORA_REQUEST_TIMEOUT_SECONDS=30
     NEXORA_MAX_RETRIES=2
+    NEXORA_RETRY_BUDGET_SECONDS=
     NEXORA_CIRCUIT_FAILURE_THRESHOLD=5
     NEXORA_CIRCUIT_RECOVERY_SECONDS=30
     NEXORA_ROUTING_POLICY=health_aware
@@ -226,6 +227,7 @@ The test suite covers:
 - Rate limiting
 - Provider routing
 - Retry behavior
+- Optional retry time budget
 - Timeout handling
 - Unexpected-error handling
 
