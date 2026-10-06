@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     circuit_recovery_seconds: float = 30.0
     routing_policy: str = "health_aware"
     provider_concurrency_limit: int = 10
+    max_provider_failovers: int = 1
     log_level: str = "INFO"
 
     model_config = SettingsConfigDict(
@@ -26,3 +27,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

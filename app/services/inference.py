@@ -3,7 +3,7 @@ import time
 from app.core.config import settings
 from app.models.schemas import ChatRequest, ChatResponse
 from app.observability.metrics import LATENCY, REQUESTS, RETRIES, TOKENS
-from app.providers.base import ProviderUnavailable
+from app.providers.base import ProviderError, ProviderTimeout, ProviderUnavailable
 from app.providers.registry import ProviderRegistry
 from app.reliability.bulkhead import Bulkhead, BulkheadFull
 from app.reliability.circuit_breaker import CircuitBreaker
@@ -34,6 +34,7 @@ class InferenceService:
             if self.breakers[p.name].allow()
         }
         attempted: set[str] = set()
+        failover_count = 0
 
         while True:
             available = healthy - attempted
@@ -77,12 +78,18 @@ class InferenceService:
             except BulkheadFull:
                 REQUESTS.labels(request.model, "bulkhead_full").inc()
                 raise
-            except Exception:
+            except (ProviderError, ProviderTimeout):
                 breaker.failure()
                 REQUESTS.labels(request.model, "error").inc()
                 if not (healthy - attempted):
                     raise
+                if failover_count >= settings.max_provider_failovers:
+                    raise
+                failover_count += 1
             finally:
                 if acquired:
                     await bulkhead.release()
+
+
+
 

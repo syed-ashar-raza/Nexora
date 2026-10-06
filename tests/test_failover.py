@@ -78,3 +78,40 @@ async def test_inference_fails_over_to_healthy_provider():
 
 
 
+
+@pytest.mark.asyncio
+async def test_inference_limits_provider_failovers():
+    model = "shared-model"
+    primary = FailingProvider("provider-a", model)
+    fallback = FailingProvider("provider-b", model)
+    third = FailingProvider("provider-c", model)
+
+    service = InferenceService()
+    service.registry._providers = {
+        primary.name: primary,
+        fallback.name: fallback,
+        third.name: third,
+    }
+    service.breakers = {
+        primary.name: CircuitBreaker(),
+        fallback.name: CircuitBreaker(),
+        third.name: CircuitBreaker(),
+    }
+    service.bulkheads = {
+        primary.name: Bulkhead(10),
+        fallback.name: Bulkhead(10),
+        third.name: Bulkhead(10),
+    }
+    service.router.providers = [primary, fallback, third]
+
+    request = ChatRequest(
+        model=model,
+        messages=[{"role": "user", "content": "hello"}],
+    )
+
+    with pytest.raises(ProviderError):
+        await service.chat(request)
+
+    assert primary.calls == 3
+    assert fallback.calls == 3
+    assert third.calls == 0
